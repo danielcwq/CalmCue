@@ -12,6 +12,13 @@ export default function Dashboard() {
   return (
     <StressGradientBackground stressLevel={stressScore}>
       <div className="min-h-screen p-4 flex flex-col">
+        {/* Header */}
+        <header className="w-full text-center py-6">
+          <h1 className="text-5xl font-bold text-gray-800 tracking-wide">
+            Calm Cue
+          </h1>
+        </header>
+
         <div className="flex-1 flex items-center justify-center">
           <div className="flex gap-8 items-center">
             {/* Heart Rate */}
