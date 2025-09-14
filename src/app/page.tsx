@@ -30,7 +30,7 @@ export default function Dashboard() {
 // Stress Score Display - Now using real AI-powered stress analysis
 function StressScoreDisplay() {
   const [mounted, setMounted] = useState(false);
-  const { stressScore, reasoning, loading } = useStressScore();
+  const { stressScore } = useStressScore();
 
   // Stress level emojis (0 = lowest stress, 6 = highest stress)
   const stressEmojis = useMemo(() => [

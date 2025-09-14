@@ -10,10 +10,10 @@ export interface StressContext {
 
 export interface EmailEvent {
   event_id: string;
-  ts_range: any;
+  ts_range: unknown;
   start_at: string;
   end_at: string;
-  details: any;
+  details: unknown;
   ingested_at: string;
 }
 

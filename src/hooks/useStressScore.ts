@@ -18,7 +18,7 @@ export function useStressScore() {
   const computationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get today's wellness data from intervals.icu
-  const { wellnessData, getStressMetrics } = useWellnessData();
+  const { getStressMetrics } = useWellnessData();
 
   // Fetch current heart rate from your existing logic
   const fetchCurrentHeartRate = useCallback(async (): Promise<number> => {
@@ -77,7 +77,7 @@ export function useStressScore() {
       previousScore: stressScore,
       previousReasoning: reasoning
     };
-  }, [fetchCurrentHeartRate, fetchGmailEvents, stressScore, reasoning]);
+  }, [fetchCurrentHeartRate, fetchGmailEvents, stressScore, reasoning, getStressMetrics]);
 
   // LLM-powered stress computation
   const computeStressScore = useCallback(async (context: StressContext): Promise<StressAnalysis> => {
@@ -275,8 +275,9 @@ Assess current stress level considering physiological data, schedule pressure, a
 
     return () => {
       clearInterval(interval);
-      if (computationTimeoutRef.current) {
-        clearTimeout(computationTimeoutRef.current);
+      const timeoutId = computationTimeoutRef.current;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
     };
   }, [updateStressScore]);

@@ -27,7 +27,7 @@ const moodEmojis: { [key: string]: string } = {
 };
 
 export default function MoodTracker() {
-  const [mounted, setMounted] = useState(false);
+  const [, setMounted] = useState(false);
   const [currentMood, setCurrentMood] = useState<MoodData>({
     mood: 'calm',
     intensity: 7,

@@ -141,7 +141,7 @@ Do not include any other text, explanations, or formatting. Only the JSON respon
       const jsonMatch = responseText.match(/\{[\s\S]*?\}/);
       const jsonStr = jsonMatch ? jsonMatch[0] : responseText;
       stressData = JSON.parse(jsonStr);
-    } catch (parseError) {
+    } catch {
       console.warn('Failed to parse stress response as JSON, using fallback');
 
       // Fallback parsing

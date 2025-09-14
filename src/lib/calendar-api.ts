@@ -2,9 +2,51 @@
 
 import { CalendarEvent } from '@/types/stress';
 
+// Google API type definitions
+interface GoogleApiInstance {
+  load: (apiName: string, callback: () => void) => void;
+  client: {
+    init: (config: {
+      clientId?: string;
+      discoveryDocs: string[];
+      scope: string;
+    }) => Promise<void>;
+    calendar: {
+      events: {
+        list: (params: {
+          calendarId: string;
+          timeMin: string;
+          timeMax: string;
+          maxResults: number;
+          singleEvents: boolean;
+          orderBy: string;
+        }) => Promise<{
+          result: {
+            items: CalendarEvent[];
+          };
+        }>;
+      };
+    };
+  };
+  auth2: {
+    getAuthInstance: () => GoogleAuthInstance | null;
+  };
+}
+
+interface GoogleAuthInstance {
+  isSignedIn: {
+    get: () => boolean;
+  };
+  signIn: () => Promise<void>;
+}
+
+interface WindowWithGapi extends Window {
+  gapi?: GoogleApiInstance;
+}
+
 export class GoogleCalendarService {
   private static instance: GoogleCalendarService;
-  private gapi: any = null;
+  private gapi: GoogleApiInstance | null = null;
   private isSignedIn = false;
 
   private constructor() {}
@@ -24,25 +66,25 @@ export class GoogleCalendarService {
       // Wait for gapi to be available
       await this.waitForGapi();
 
-      this.gapi = (window as any).gapi;
+      this.gapi = (window as WindowWithGapi).gapi || null;
 
       // Load auth2 and client
       await new Promise<void>((resolve) => {
-        this.gapi.load('auth2', resolve);
+        this.gapi!.load('auth2', resolve);
       });
 
       await new Promise<void>((resolve) => {
-        this.gapi.load('client', resolve);
+        this.gapi!.load('client', resolve);
       });
 
       // Initialize the client
-      await this.gapi.client.init({
+      await this.gapi!.client.init({
         clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
         discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
         scope: 'https://www.googleapis.com/auth/calendar.readonly'
       });
 
-      const authInstance = this.gapi.auth2.getAuthInstance();
+      const authInstance = this.gapi!.auth2.getAuthInstance();
       this.isSignedIn = authInstance?.isSignedIn?.get() || false;
 
       return true;
@@ -55,7 +97,7 @@ export class GoogleCalendarService {
   private waitForGapi(): Promise<void> {
     return new Promise((resolve, reject) => {
       const checkGapi = () => {
-        if ((window as any).gapi) {
+        if ((window as WindowWithGapi).gapi) {
           resolve();
         } else {
           setTimeout(checkGapi, 100);
@@ -77,7 +119,7 @@ export class GoogleCalendarService {
         if (!initialized) return false;
       }
 
-      const authInstance = this.gapi.auth2.getAuthInstance();
+      const authInstance = this.gapi!.auth2.getAuthInstance();
       if (!authInstance) {
         console.error('Google Auth instance not available');
         return false;
@@ -105,7 +147,7 @@ export class GoogleCalendarService {
       const timeMax = new Date();
       timeMax.setHours(timeMax.getHours() + hoursAhead);
 
-      const response = await this.gapi.client.calendar.events.list({
+      const response = await this.gapi!.client.calendar.events.list({
         calendarId: 'primary',
         timeMin: timeMin.toISOString(),
         timeMax: timeMax.toISOString(),
@@ -134,7 +176,7 @@ export class GoogleCalendarService {
       const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
       const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
 
-      const response = await this.gapi.client.calendar.events.list({
+      const response = await this.gapi!.client.calendar.events.list({
         calendarId: 'primary',
         timeMin: startOfDay.toISOString(),
         timeMax: endOfDay.toISOString(),

@@ -5,7 +5,7 @@ import { useWellnessData } from '@/hooks/useWellnessData';
 
 export default function TestWellnessPage() {
   const { wellnessData, loading, error, refresh, getStressMetrics } = useWellnessData();
-  const [rawApiTest, setRawApiTest] = useState<any>(null);
+  const [rawApiTest, setRawApiTest] = useState<unknown>(null);
 
   const testRawAPI = async () => {
     try {
@@ -13,7 +13,7 @@ export default function TestWellnessPage() {
       const data = await response.json();
       setRawApiTest(data);
     } catch (err) {
-      setRawApiTest({ error: err });
+      setRawApiTest({ error: String(err) });
     }
   };
 
@@ -72,7 +72,7 @@ export default function TestWellnessPage() {
               Test /api/wellness
             </button>
 
-            {rawApiTest && (
+            {rawApiTest !== null && (
               <div>
                 <h3 className="font-semibold mb-2">Raw API Response:</h3>
                 <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto max-h-96">
