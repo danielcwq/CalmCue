@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Heart, Wifi, WifiOff } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Heart } from 'lucide-react';
 import { supabase, HeartRateReading } from '@/lib/supabase';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
@@ -26,7 +25,7 @@ export default function HeartRateCard() {
     status: 'normal'
   });
   const [heartRateHistory, setHeartRateHistory] = useState<HeartRatePoint[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
+  const [,] = useState(false); // isConnected removed as it's unused
 
   useEffect(() => {
     setMounted(true);
@@ -88,7 +87,7 @@ export default function HeartRateCard() {
 
       if (data && data.length > 0) {
         // Reverse to get chronological order for graph
-        const history = data.reverse().map((reading: any) => ({
+        const history = data.reverse().map((reading: { value: number; ts: string }) => ({
           value: Math.round(reading.value),
           timestamp: new Date(reading.ts)
         }));
@@ -142,10 +141,8 @@ export default function HeartRateCard() {
       .subscribe((status) => {
         console.log('🌐 Subscription status:', status);
         if (status === 'SUBSCRIBED') {
-          setIsConnected(true);
           console.log('✅ Connected to Supabase real-time heart rate updates');
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          setIsConnected(false);
           console.log('❌ Disconnected from Supabase real-time updates:', status);
         }
       });
@@ -169,23 +166,7 @@ export default function HeartRateCard() {
     return 'high';
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'normal': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'elevated': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-      case 'high': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
-    }
-  };
-
-  const getHeartColor = (status: string) => {
-    switch (status) {
-      case 'normal': return 'text-green-500';
-      case 'elevated': return 'text-yellow-500';
-      case 'high': return 'text-red-500';
-      default: return 'text-gray-500';
-    }
-  };
+  // Removed unused getStatusColor and getHeartColor functions
 
   // Simple Line Graph Component
   const LineGraph = ({ data }: { data: HeartRatePoint[] }) => {
@@ -216,7 +197,7 @@ export default function HeartRateCard() {
 
     const centerValue = (maxValue + minValue) / 2;
     const adjustedMin = centerValue - range / 2;
-    const adjustedMax = centerValue + range / 2;
+    // const adjustedMax = centerValue + range / 2; // Unused variable commented out
 
     const width = 300;
     const height = 80;

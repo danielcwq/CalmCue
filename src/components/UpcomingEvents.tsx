@@ -24,7 +24,7 @@ const eventIcons = {
 };
 
 export default function UpcomingEvents() {
-  const [events, setEvents] = useState<Event[]>([
+  const [events,] = useState<Event[]>([ // setEvents removed as it's unused
     {
       id: '1',
       title: 'Team Standup',

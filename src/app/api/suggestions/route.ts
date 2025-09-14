@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-const { CohereClientV2 } = require('cohere-ai');
+import { CohereClientV2 } from 'cohere-ai';
 
 const cohere = new CohereClientV2({
   token: process.env.COHERE_API_KEY!,
@@ -16,9 +16,11 @@ You are a wellness assistant helping someone calm down at the end of the day. Ba
 - Heart Rate: ${heartRate} BPM
 - Time: ${timeOfDay}
 - Timezone: ${timezone}
-- Recent Gmail Events: ${events?.length > 0 ? events.map((e: any) => {
+- Recent Gmail Events: ${events?.length > 0 ? events.map((e: { details: string | object; start_at?: string }) => {
       const details = typeof e.details === 'string' ? JSON.parse(e.details) : e.details;
-      const eventInfo = details?.subject || details?.summary || details?.title || 'Event';
+      const eventInfo = (details as { subject?: string; summary?: string; title?: string })?.subject ||
+                       (details as { subject?: string; summary?: string; title?: string })?.summary ||
+                       (details as { subject?: string; summary?: string; title?: string })?.title || 'Event';
       const timeInfo = e.start_at ? new Date(e.start_at).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'}) : '';
       return `• ${eventInfo}${timeInfo ? ` (${timeInfo})` : ''}`;
     }).join('\n') : 'No recent events'}
@@ -50,8 +52,17 @@ Format as a simple numbered list:
       ],
     });
 
+    // Extract text content from Cohere response
+    let suggestionText = 'No suggestion available';
+    if (response.message.content && Array.isArray(response.message.content)) {
+      const textContent = response.message.content.find((item: { type?: string; text?: string }) => item.type === 'text');
+      if (textContent && 'text' in textContent) {
+        suggestionText = textContent.text;
+      }
+    }
+
     return NextResponse.json({
-      suggestion: response.message.content[0].text,
+      suggestion: suggestionText,
     });
 
   } catch (error) {

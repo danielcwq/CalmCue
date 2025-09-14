@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Heart } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import HeartRateCard from '@/components/HeartRateCard';
 import { supabase } from '@/lib/supabase';
 
@@ -34,7 +33,7 @@ function StressScoreDisplay() {
   const [currentEmoji, setCurrentEmoji] = useState('🙂');
 
   // Stress level emojis (0 = lowest stress, 6 = highest stress)
-  const stressEmojis = [
+  const stressEmojis = useMemo(() => [
     { emoji: '😊', label: 'Relaxed' },      // 0 - Very low stress
     { emoji: '🙂', label: 'Calm' },        // 1 - Low stress
     { emoji: '😐', label: 'Neutral' },     // 2 - Slightly tense
@@ -43,7 +42,7 @@ function StressScoreDisplay() {
     { emoji: '😬', label: 'Stressed' },    // 4 - High stress
     { emoji: '😰', label: 'Very Stressed' }, // 5 - Very high stress
     { emoji: '🤯', label: 'Mindblown' }     // 6 - Overwhelmed/mindblown
-  ];
+  ], []);
 
   useEffect(() => {
     setMounted(true);
@@ -64,14 +63,14 @@ function StressScoreDisplay() {
     // Update stress score every 45 seconds
     const interval = setInterval(updateStressScore, 45000);
     return () => clearInterval(interval);
-  }, [mounted, stressScore]);
+  }, [mounted, stressScore, stressEmojis]);
 
   // Set initial emoji
   useEffect(() => {
     if (mounted) {
       setCurrentEmoji(stressEmojis[stressScore].emoji);
     }
-  }, [mounted, stressScore]);
+  }, [mounted, stressScore, stressEmojis]);
 
   const getStressColor = (score: number) => {
     if (score <= 1) return 'text-green-500';
@@ -94,9 +93,7 @@ function StressScoreDisplay() {
 function WellnessAssistant() {
   const [currentSuggestion, setCurrentSuggestion] = useState('');
   const [mounted, setMounted] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [currentHeartRate, setCurrentHeartRate] = useState(72);
-  const [previousHeartRate, setPreviousHeartRate] = useState(72);
   const [suggestionQueue, setSuggestionQueue] = useState<string[]>([]);
   const [queueIndex, setQueueIndex] = useState(0);
 
@@ -107,29 +104,24 @@ function WellnessAssistant() {
   // Function to fetch Gmail events from Supabase
   const fetchGmailEvents = async () => {
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('events')
         .select('event_id, ts_range, start_at, end_at, details, ingested_at')
         .order('ingested_at', { ascending: false })
         .limit(5);
 
-      if (error) {
-        console.error('Error fetching events:', error);
-        return [];
-      }
-
       console.log('📧 Fetched Gmail events:', data);
       return data || [];
-    } catch (error) {
-      console.error('Error fetching Gmail events:', error);
+    } catch (err) {
+      console.error('Error fetching Gmail events:', err);
       return [];
     }
   };
 
   // Function to get current heart rate and detect changes
-  const fetchCurrentHeartRate = async () => {
+  const fetchCurrentHeartRate = useCallback(async () => {
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('physio_measurements')
         .select('value')
         .eq('metric', 'heart_rate')
@@ -138,11 +130,11 @@ function WellnessAssistant() {
 
       if (data && data.length > 0) {
         const newHR = Math.round(data[0].value);
-        setPreviousHeartRate(currentHeartRate);
+        const previousHR = currentHeartRate;
         setCurrentHeartRate(newHR);
 
         // Check for significant heart rate changes
-        const hrChange = newHR - currentHeartRate;
+        const hrChange = newHR - previousHR;
         if (Math.abs(hrChange) >= 8) { // 8+ BPM change
           const spikeMessage = hrChange > 0
             ? generateSpikeMessage(hrChange)
@@ -160,7 +152,7 @@ function WellnessAssistant() {
       console.error('Error fetching heart rate:', error);
       return 72;
     }
-  };
+  }, [currentHeartRate]);
 
   // Generate playful spike messages
   const generateSpikeMessage = (increase: number): string => {
@@ -187,8 +179,7 @@ function WellnessAssistant() {
   };
 
   // Generate suggestions using Cohere
-  const generateSuggestions = async () => {
-    setLoading(true);
+  const generateSuggestions = useCallback(async () => {
     try {
       const heartRate = await fetchCurrentHeartRate();
       const events = await fetchGmailEvents();
@@ -235,10 +226,8 @@ function WellnessAssistant() {
       console.error('Error generating suggestions:', error);
       setSuggestionQueue(['Having trouble connecting... but hey, breathe! 🌬️']);
       setQueueIndex(0);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [fetchCurrentHeartRate]);
 
   // Rotate through suggestion queue every 5 seconds
   useEffect(() => {
@@ -256,7 +245,7 @@ function WellnessAssistant() {
     }, 5000); // 5 seconds per suggestion
 
     return () => clearInterval(rotateInterval);
-  }, [mounted, suggestionQueue]);
+  }, [mounted, suggestionQueue, generateSuggestions]);
 
   // Update current suggestion when queue or index changes
   useEffect(() => {
@@ -272,13 +261,13 @@ function WellnessAssistant() {
     fetchCurrentHeartRate();
     const hrInterval = setInterval(fetchCurrentHeartRate, 10000);
     return () => clearInterval(hrInterval);
-  }, [mounted, currentHeartRate]);
+  }, [mounted, fetchCurrentHeartRate]);
 
   // Initial suggestion generation
   useEffect(() => {
     if (!mounted) return;
     generateSuggestions();
-  }, [mounted]);
+  }, [mounted, generateSuggestions]);
 
   return (
     <div className="bg-white rounded-lg p-4 mb-4 min-h-[100px]">
