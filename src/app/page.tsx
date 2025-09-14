@@ -2,27 +2,32 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import HeartRateCard from '@/components/HeartRateCard';
+import StressGradientBackground from '@/components/StressGradientBackground';
 import { useStressScore } from '@/hooks/useStressScore';
 import { supabase } from '@/lib/supabase';
 
 export default function Dashboard() {
+  const { stressScore } = useStressScore();
+
   return (
-    <div className="min-h-screen bg-gray-50 p-4 flex flex-col">
-      <div className="flex-1 flex items-center justify-center">
-        <div className="flex gap-8 items-center">
-          {/* Heart Rate */}
-          <HeartRateCard />
-          
-          {/* Stress Score */}
-          <StressScoreDisplay />
+    <StressGradientBackground stressLevel={stressScore}>
+      <div className="min-h-screen p-4 flex flex-col">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex gap-8 items-center">
+            {/* Heart Rate */}
+            <HeartRateCard />
+
+            {/* Stress Score */}
+            <StressScoreDisplay />
+          </div>
+        </div>
+
+        {/* Wellness Assistant at bottom */}
+        <div className="max-w-2xl mx-auto w-full">
+          <WellnessAssistant />
         </div>
       </div>
-      
-      {/* Wellness Assistant at bottom */}
-      <div className="max-w-2xl mx-auto w-full">
-        <WellnessAssistant />
-      </div>
-    </div>
+    </StressGradientBackground>
   );
 }
 
@@ -59,9 +64,9 @@ function StressScoreDisplay() {
   if (!mounted) return <div className="bg-white rounded-lg p-8 text-center">Loading...</div>;
 
   return (
-    <div className="bg-gray-50 rounded-lg p-8 text-center">
+    <div className="bg-white/80 backdrop-blur-sm rounded-lg p-8 text-center shadow-lg">
       <div className="text-8xl mb-4">{currentStress.emoji}</div>
-      <div className="text-lg text-gray-500">Stress Level</div>
+      <div className="text-lg text-gray-600">Stress Level</div>
       <div className={`text-sm font-medium mt-1 ${getStressColor(stressScore)}`}>
         {currentStress.label}
       </div>
@@ -209,7 +214,7 @@ function WellnessAssistant() {
     }
   }, [fetchCurrentHeartRate]);
 
-  // Rotate through suggestion queue every 5 seconds
+  // Rotate through suggestion queue every 8 seconds
   useEffect(() => {
     if (!mounted || suggestionQueue.length === 0) return;
 
@@ -222,7 +227,7 @@ function WellnessAssistant() {
         }
         return nextIndex;
       });
-    }, 5000); // 5 seconds per suggestion
+    }, 8000); // 8 seconds per suggestion
 
     return () => clearInterval(rotateInterval);
   }, [mounted, suggestionQueue, generateSuggestions]);
@@ -250,7 +255,7 @@ function WellnessAssistant() {
   }, [mounted, generateSuggestions]);
 
   return (
-    <div className="bg-white rounded-lg p-4 mb-4 min-h-[100px]">
+    <div className="bg-white/85 backdrop-blur-sm rounded-lg p-4 mb-4 min-h-[100px] shadow-lg">
       <div className="text-gray-700 leading-relaxed text-lg">
         {currentSuggestion || "Getting to know you..."}
       </div>
