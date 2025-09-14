@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import HeartRateCard from '@/components/HeartRateCard';
+import { useStressScore } from '@/hooks/useStressScore';
 import { supabase } from '@/lib/supabase';
 
 export default function Dashboard() {
@@ -26,11 +27,10 @@ export default function Dashboard() {
 }
 
 
-// Stress Score Display
+// Stress Score Display - Now using real AI-powered stress analysis
 function StressScoreDisplay() {
   const [mounted, setMounted] = useState(false);
-  const [stressScore, setStressScore] = useState(3); // Default to slight smile (low stress)
-  const [currentEmoji, setCurrentEmoji] = useState('🙂');
+  const { stressScore, reasoning, loading } = useStressScore();
 
   // Stress level emojis (0 = lowest stress, 6 = highest stress)
   const stressEmojis = useMemo(() => [
@@ -48,42 +48,22 @@ function StressScoreDisplay() {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (!mounted) return;
-
-    // Simulate stress score changes (can be replaced with real calculation later)
-    const updateStressScore = () => {
-      // For now, randomly fluctuate around current level ±1
-      const variation = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
-      const newScore = Math.max(0, Math.min(6, stressScore + variation));
-      setStressScore(newScore);
-      setCurrentEmoji(stressEmojis[newScore].emoji);
-    };
-
-    // Update stress score every 45 seconds
-    const interval = setInterval(updateStressScore, 45000);
-    return () => clearInterval(interval);
-  }, [mounted, stressScore, stressEmojis]);
-
-  // Set initial emoji
-  useEffect(() => {
-    if (mounted) {
-      setCurrentEmoji(stressEmojis[stressScore].emoji);
-    }
-  }, [mounted, stressScore, stressEmojis]);
-
   const getStressColor = (score: number) => {
     if (score <= 1) return 'text-green-500';
     if (score <= 3) return 'text-yellow-500';
     return 'text-red-500';
   };
 
+  const currentStress = stressEmojis[Math.min(stressScore, 6)];
+
+  if (!mounted) return <div className="bg-white rounded-lg p-8 text-center">Loading...</div>;
+
   return (
     <div className="bg-white rounded-lg p-8 text-center">
-      <div className="text-8xl mb-4">{currentEmoji}</div>
+      <div className="text-8xl mb-4">{currentStress.emoji}</div>
       <div className="text-lg text-gray-500">Stress Level</div>
       <div className={`text-sm font-medium mt-1 ${getStressColor(stressScore)}`}>
-        {stressEmojis[stressScore].label}
+        {currentStress.label}
       </div>
     </div>
   );

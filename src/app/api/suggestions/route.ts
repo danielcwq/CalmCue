@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     const { heartRate, timeOfDay, timezone, events } = await request.json();
 
     const prompt = `
-You are a wellness assistant helping someone calm down at the end of the day. Based on the following information, provide personalized suggestions with a few light jokes mixed in:
+You are a wellness assistant helping someone calm down throughout the day. Based on the following information, provide personalized suggestions with a few light jokes mixed in:
 
 **Current Context:**
 - Heart Rate: ${heartRate} BPM
