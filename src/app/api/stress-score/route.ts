@@ -1,13 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CohereClientV2 } from 'cohere-ai';
 
+// Type definitions for Cohere reasoning response
+interface CohereThinkingContent {
+  type: "thinking";
+  thinking: string;
+}
+
+interface CohereTextContent {
+  type: "text";
+  text: string;
+}
+
+type CohereContent = CohereThinkingContent | CohereTextContent;
+
+interface CohereMessage {
+  content: CohereContent[];
+}
+
+interface CohereResponse {
+  message: CohereMessage;
+}
+
 const cohere = new CohereClientV2({
   token: process.env.COHERE_API_KEY!,
 });
 
 export async function POST(request: NextRequest) {
   try {
-    const { heartRate, timeOfDay, events, previousScore, previousReasoning } = await request.json();
+    const { heartRate, timeOfDay, events, previousScore, previousReasoning, wellnessData } = await request.json();
+
+    console.log('🔍 Stress API received wellness data:', wellnessData);
+    console.log('📊 Intervals.icu data status:', {
+      hasWellnessData: !!wellnessData,
+      hrv: wellnessData?.hrv,
+      sleepScore: wellnessData?.sleepScore,
+      stress: wellnessData?.stress,
+      mood: wellnessData?.mood
+    });
 
     const prompt = `You are a stress assessment AI that analyzes a person's current situation to compute a stress score from 0-6:
 
@@ -23,7 +53,20 @@ export async function POST(request: NextRequest) {
 - Heart Rate: ${heartRate} BPM (normal resting: 60-100 BPM)
 - Time: ${timeOfDay}
 - Previous Stress: ${previousScore}/6 - "${previousReasoning}"
-- Recent Email Activity: ${events?.length > 0 ? events.map((e: { details: string | object; start_at?: string }) => {
+
+**intervals.icu Wellness Data:**${wellnessData ? `
+- HRV: ${wellnessData.hrv || 'N/A'} ms
+- Resting HR: ${wellnessData.restingHR || 'N/A'} BPM
+- Sleep Score: ${wellnessData.sleepScore || 'N/A'}/100
+- Sleep Quality: ${wellnessData.sleepQuality || 'N/A'}/5
+- Stress Level: ${wellnessData.stress || 'N/A'}/5 (self-reported)
+- Fatigue: ${wellnessData.fatigue || 'N/A'}/5
+- Soreness: ${wellnessData.soreness || 'N/A'}/5
+- Mood: ${wellnessData.mood || 'N/A'}/5
+- Readiness: ${wellnessData.readiness || 'N/A'}/100` : '\n- No wellness data available'}
+
+**Recent Email Activity:**
+${events?.length > 0 ? events.map((e: { details: string | object; start_at?: string }) => {
   const details = typeof e.details === 'string' ? JSON.parse(e.details) : e.details;
   const eventInfo = (details as { subject?: string; summary?: string; title?: string })?.subject ||
                    (details as { subject?: string; summary?: string; title?: string })?.summary ||
@@ -48,23 +91,47 @@ export async function POST(request: NextRequest) {
 
 Do not include any other text, explanations, or formatting. Only the JSON response.`;
 
+    console.log('🤖 Full prompt being sent to LLM:');
+    console.log('=' .repeat(50));
+    console.log(prompt);
+    console.log('=' .repeat(50));
+
     const response = await cohere.chat({
-      model: 'command-a-03-2025',
+      model: 'command-a-reasoning-08-2025',
       messages: [
         {
           role: 'user',
           content: prompt,
         },
       ],
-    });
+    }) as CohereResponse;
 
-    // Extract text content from Cohere response
+    // Extract thinking and text content from Cohere reasoning response
     let responseText = '';
-    if (response.message.content && Array.isArray(response.message.content)) {
-      const textContent = response.message.content.find((item: { type?: string; text?: string }) => item.type === 'text');
-      if (textContent && 'text' in textContent) {
-        responseText = textContent.text;
+    let thinkingContent = '';
+
+    if (response.message?.content && Array.isArray(response.message.content)) {
+      for (const content of response.message.content) {
+        // Type-safe handling of thinking content
+        if (content.type === "thinking") {
+          thinkingContent = (content as CohereThinkingContent).thinking;
+          console.log('🧠 Cohere Thinking:', (content as CohereThinkingContent).thinking);
+        }
+
+        // Type-safe handling of text content
+        if (content.type === "text") {
+          responseText = (content as CohereTextContent).text;
+          console.log('📝 Cohere Response:', (content as CohereTextContent).text);
+        }
       }
+    }
+
+    // Log if we didn't get expected content types
+    if (!responseText) {
+      console.warn('⚠️ No text content found in Cohere response');
+    }
+    if (!thinkingContent) {
+      console.warn('⚠️ No thinking content found in Cohere reasoning response');
     }
 
     // Try to parse as JSON

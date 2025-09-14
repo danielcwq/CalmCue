@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { StressContext, StressAnalysis, StressHistory, EmailEvent } from '@/types/stress';
 import { calendarService } from '@/lib/calendar-api';
 import { supabase } from '@/lib/supabase';
+import { useWellnessData } from './useWellnessData';
 
 export function useStressScore() {
   const [stressScore, setStressScore] = useState(3); // Default to your existing default
@@ -15,6 +16,9 @@ export function useStressScore() {
   // Keep track of previous context for comparison
   const previousContextRef = useRef<StressContext | null>(null);
   const computationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Get today's wellness data from intervals.icu
+  const { wellnessData, getStressMetrics } = useWellnessData();
 
   // Fetch current heart rate from your existing logic
   const fetchCurrentHeartRate = useCallback(async (): Promise<number> => {
@@ -130,18 +134,26 @@ ${context.calendarEvents.slice(0, 5).map(event => {
 Assess current stress level considering physiological data, schedule pressure, and workload.`;
 
       // Create a dedicated API route for stress computation instead of using suggestions
+      const wellnessMetrics = getStressMetrics();
+      console.log('🏥 Wellness data being sent to LLM:', wellnessMetrics);
+
+      const payload = {
+        heartRate: context.heartRate,
+        timeOfDay: context.timeOfDay,
+        events: context.recentEmails,
+        previousScore: context.previousScore,
+        previousReasoning: context.previousReasoning,
+        wellnessData: wellnessMetrics
+      };
+
+      console.log('📤 Full payload to stress API:', payload);
+
       const response = await fetch('/api/stress-score', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          heartRate: context.heartRate,
-          timeOfDay: context.timeOfDay,
-          events: context.recentEmails,
-          previousScore: context.previousScore,
-          previousReasoning: context.previousReasoning
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -189,17 +201,26 @@ Assess current stress level considering physiological data, schedule pressure, a
       return true;
     }
 
-    // Check time-based updates (every 10 minutes during work hours only)
+    // Much more aggressive time-based updates
     const timeDiff = newContext.timestamp.getTime() - prev.timestamp.getTime();
     const isWorkHours = newContext.timestamp.getHours() >= 9 && newContext.timestamp.getHours() <= 18;
-    if (isWorkHours && timeDiff >= 10 * 60 * 1000) {
-      console.log('⏰ 10-minute work hours update');
+
+    // During work hours - update every 30 seconds for real-time stress tracking
+    if (isWorkHours && timeDiff >= 30 * 1000) {
+      console.log('⏰ 30-second work hours update');
       return true;
     }
 
-    // Outside work hours - only update every 30 minutes
-    if (!isWorkHours && timeDiff >= 30 * 60 * 1000) {
-      console.log('🌙 30-minute off-hours update');
+    // Evening hours (6PM-11PM) - update every 2 minutes
+    const isEveningHours = newContext.timestamp.getHours() >= 18 && newContext.timestamp.getHours() <= 23;
+    if (isEveningHours && timeDiff >= 2 * 60 * 1000) {
+      console.log('🌆 2-minute evening update');
+      return true;
+    }
+
+    // Late night/early morning - update every 5 minutes
+    if (!isWorkHours && !isEveningHours && timeDiff >= 5 * 60 * 1000) {
+      console.log('🌙 5-minute off-hours update');
       return true;
     }
 

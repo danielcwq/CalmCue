@@ -59,7 +59,7 @@ function StressScoreDisplay() {
   if (!mounted) return <div className="bg-white rounded-lg p-8 text-center">Loading...</div>;
 
   return (
-    <div className="bg-white rounded-lg p-8 text-center">
+    <div className="bg-gray-50 rounded-lg p-8 text-center">
       <div className="text-8xl mb-4">{currentStress.emoji}</div>
       <div className="text-lg text-gray-500">Stress Level</div>
       <div className={`text-sm font-medium mt-1 ${getStressColor(stressScore)}`}>
